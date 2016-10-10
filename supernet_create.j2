@@ -1,0 +1,8 @@
+{
+    "cidr": "{{ encr_snet }}",
+    "network_address": "{{ encr_snet | ipaddr('network') }}",
+    "prefix_length": "{{ encr_snet | ipaddr('prefix') }}",
+    "attributes": { 'service_key': 'supernet' },
+    "state": "allocated",
+    "site_id": "{{ site['json']['id'] }}"
+}

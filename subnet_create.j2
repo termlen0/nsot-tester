@@ -2,7 +2,7 @@
     "cidr": "{{ encry_domain.json[0] }}",
     "network_address":  "{{ encry_domain.json[0] | ipaddr('network') }}",
     "prefix_length": {{ encry_domain.json[0] | ipaddr('prefix')}},
-    "attributes": {},
+    "attributes": {'service_key': '{{skey}}'},
     "state": "allocated",
     "site_id": {{ site_id }}
 }

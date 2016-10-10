@@ -1,0 +1,8 @@
+{
+    "cidr": "10.119.0.0/24",
+    "network_address": "10.119.0.0",
+    "prefix_length": "24",
+    "attributes": { 'service_key': 'supernet' },
+    "state": "allocated",
+    "site_id": "1"
+}

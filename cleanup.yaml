@@ -1,0 +1,71 @@
+---
+
+    ############
+    # CLEANUP  #
+    ############
+      #Remove the value from the network attribute
+    - name: Delete the values associated with the encr_subnet
+      uri:
+        url: "{{ URL }}networks/{{ encr_snet }}/"
+        method: PATCH
+        HEADER_Content-Type: "application/json"
+        status_code: 200
+        body: "{{ lookup('file','value_delete.json') }}"
+        body_format: json
+      delegate_to: localhost
+
+    - name: Collect the itervalues 
+      action: uri url={{ URL }}itervalues
+      register: vals
+      delegate_to: localhost
+
+    - name: Delete the itervalues
+      uri:
+        url: "{{ URL }}itervalues/{{ item['id'] }}/"
+        method: DELETE
+        HEADER_Content-Type: "application/json"
+        status_code: 204
+      delegate_to: localhost
+      with_items: vals['json']
+
+    - name: Collect Attributes to be deleted
+      action: uri url={{ URL }}attributes  return_content=yes
+      register: attr_dict
+
+    - name: Delete the attributes
+      uri:
+        url: "{{ URL }}attributes/{{ item['id'] }}/"
+        method: DELETE
+        HEADER_Content-Type: "application/json"
+        status_code: 204
+      delegate_to: localhost
+      with_items: attr_dict['json']
+
+    - name: Delete the  network
+      uri:
+        url: "{{ URL }}networks/{{ encr_snet }}/"
+        method: DELETE
+        HEADER_Content-Type: "application/json"
+        status_code: 204
+      delegate_to: localhost
+  
+    - name: Delete the Iterables
+      uri:
+        url: "{{ URL }}iterables/{{ item }}_counter/"
+        method: DELETE
+        HEADER_Content-Type: "application/json"
+        status_code: 204
+      delegate_to: localhost
+      with_items:
+        - vlan
+        - cryptomap
+
+    - name: Delete the  site
+      uri:
+        url: "{{ URL }}sites/{{ site_id }}/"
+        method: DELETE
+        HEADER_Content-Type: "application/json"
+        status_code: 204
+      delegate_to: localhost
+
+

@@ -4,75 +4,168 @@
   gather_facts: false
   connection: local
   vars:
-    site_id: 1
-    URL: "http://10.38.9.39:8991/api/sites/{{ site_id }}" 
+    URL: "http://localhost:8991/api/" 
     encr_snet: "10.119.0.0/24"
     encr_prefix: "/28"
   tasks:
+
+    - name: "Setup the necessary backend"
+      include: setup_nsot.yaml
+      tags:
+        - setup
+
     ############
     # ITERABLE #
     ############
-    - name: Collect all the iterables
-      action: uri url={{ URL }}/iterable  return_content=yes
-      register: result
 
-    - name: Debug
-      debug: var=result.content
-
-    - name: Identify the ID of the cryptomap_counter
-      set_fact: iterable="{{ item.id }}"
-      when:  item.name ==  "cryptomap_counter"
-      with_items: result.content
-
-
-    - name: Collect the next available cryptomap number
-      action: uri url={{ URL }}/iterable/{{ iterable }}/next_value 
+    - name: Collect the next available cryptomap number and vlan number
+      action: uri url={{ URL }}iterables/{{ item }}/next_value 
       register: next_val
+      with_items:
+        - vlan_counter
+        - cryptomap_counter
+      delegate_to: localhost
+      tags:
+        - play
 
+    - name: Collect iterable info
+      action: uri url={{ URL }}iterables/{{ item }}_counter
+      register: pk
+      with_items:
+        - vlan
+        - cryptomap
+      delegate_to: localhost
+      tags:
+        - play
+
+    - name:  Create a dictionary of iterable pk and their values
+      set_fact: pk_dict="{{ pk_dict | default({}) | combine({item['json']['name']:item['json']['id']}) }}"
+      with_items: pk.results
+      tags:
+        - play
+
+
+    - name: Create a dictionary of iterables and their values
+      set_fact: iter_vals="{{ iter_vals | default({}) | combine({item['item']:item['json'][0]|int }) }}"
+      with_items: next_val.results
+      tags:
+        - play
 
     - name: Generate an unique ID to identify the play
-      set_fact: uid={{ bu_name | to_uuid }}
+      set_fact: skey={{ bu_name | to_uuid }}
+      tags:
+        - play
+        - prefix
+        - local_cleanup
 
     - name: Create the json body to allocate the itervalue
       template: 
         src: itervalue.j2
-        dest: /vagrant/network_ansible_playbooks/iterval_create.json
+        dest: ./{{item.key}}_create.json
+      with_dict: iter_vals
+      tags:
+        - play
 
-    - name: Allocate the next available cryptomap number 
+    - name: Allocate the next available cryptomap number and vlan number
       uri:
-        url: http://10.38.9.39:8991/api/sites/{{ site_id }}/itervalue/
+        url: "{{URL}}itervalues/"
         method: POST 
         return_content: yes 
         HEADER_Content-Type: "application/json"
-        body: "{{ lookup('file','iterval_create.json') }}"
+        body: "{{ lookup('file','{{item}}_counter_create.json') }}"
         status_code: 201
         body_format: json
+      with_items:
+        - vlan
+        - cryptomap
+      tags:
+        - play
       
     ##########
     # PREFIX #
     ##########
     - name: Collect the next available encryption domainc
-      action: uri url={{ URL }}/networks/{{ encr_snet }}/next_network/?prefix_length=28
+      action: uri url={{ URL }}networks/{{ encr_snet }}/next_network/?prefix_length=28
       register: encry_domain
-      tags: prefix
+      tags: 
+        - play
       
     - name: Create the json body to allocate the itervalue
       template: 
         src: subnet_create.j2
-        dest: /vagrant/network_ansible_playbooks/subnet_create.json
-      tags: prefix
+        dest: ./subnet_create.json
+      tags: play
 
 
     - name: Allocate the next available encryption domain
       uri:
-        url: http://10.38.9.39:8991/api/sites/{{ site_id }}/networks/
+        url: "{{URL}}networks/"
         method: POST 
         return_content: yes 
         HEADER_Content-Type: "application/json"
         body: "{{ lookup('file','subnet_create.json') }}"
         status_code: 201
         body_format: json
-      tags: prefix
+      tags: play
  
+
+    ###########
+    # CLEANUP #
+    ###########
+
+    - name: Collect the networks whose values need to be deleted
+      action: uri url={{ URL }}networks?attributes=service_key={{skey}}
+      register: nets
+      tags:
+        - local_cleanup
+
+    - name: Delete the values associated with the subnet (so the attribute can later be deleted)
+      uri:
+        url: "{{ URL }}networks/{{item['id']}}/"
+        method: PATCH
+        HEADER_Content-Type: "application/json"
+        status_code: 200
+        body: "{{ lookup('file','value_delete.json') }}"
+        body_format: json
+      with_items: nets.json
+      delegate_to: localhost
+      tags:
+        - local_cleanup
+
+    - name: Delete the  network
+      uri:
+        url: "{{ URL }}networks/{{item['id'] }}/"
+        method: DELETE
+        HEADER_Content-Type: "application/json"
+        status_code: 204
+      with_items: nets.json
+      delegate_to: localhost
+      tags:
+        - local_cleanup
+ 
+    - name: Collect the itervalues whose values need to be deleted
+      action: uri url={{ URL }}itervalues?attributes=service_key={{skey}}
+      register: itrval
+      tags:
+        - local_cleanup
+
+    - name: Delete the values associated with the subnet (so the attribute can later be deleted)
+      uri:
+        url: "{{ URL }}itervalues/{{item['id']}}/"
+        method: PATCH
+        HEADER_Content-Type: "application/json"
+        status_code: 200
+        body: "{{ lookup('file','value_delete.json') }}"
+        body_format: json
+      with_items: itrval.json
+      delegate_to: localhost
+      tags:
+        - local_cleanup
+
+    - name: "Cleanup the setup itemsd"
+      include: cleanup.yaml
+      tags:
+        - cleanup
+
 
 

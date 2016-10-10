@@ -1,6 +1,6 @@
 {
-    "iterable": {{ iterable }},
-    "value": {{ next_val.json[0] }},
-    "unique_id": '{{ uid }}',
+    "iterable": {{ pk_dict[item.key] }},
+    "value": {{ item.value }},
+    "attributes": {'service_key': '{{skey}}'},
     "site_id": {{ site_id }}
 }

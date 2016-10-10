@@ -1,0 +1,86 @@
+---
+    ##########
+    # SETUP  #
+    ##########
+    - name: Create a site
+      uri:
+        url: "{{ URL }}sites/"
+        method: POST 
+        return_content: yes 
+        HEADER_Content-Type: "application/json"
+        body:
+          "{{ lookup('file','site_create.json') }}"
+        status_code: 201
+        body_format: json
+      delegate_to: localhost
+      register: site
+
+    ###ATTRIBUTES
+    - name: Create the json body to create the skey attrbs to be used in the playbook
+      template: 
+        src: attribute_create.j2
+        dest: ./{{item}}_attr_create.json
+      with_items:
+        - Itervalue
+        - Network
+ 
+    - name : Create the Service Key attributes
+      #This is used to identify the values associated with a given playbook run
+      uri:
+        url: "{{ URL }}attributes/"
+        method: POST 
+        return_content: yes 
+        HEADER_Content-Type: "application/json"
+        body: "{{ lookup('file','{{item}}_attr_create.json') }}"
+        status_code: 201
+        body_format: json
+      delegate_to: localhost
+      with_items: 
+        - Itervalue
+        - Network
+     ###ATTRIBUTES
+
+
+    ###SUPERNET
+    - name: Create the json body to create the encr_snet supernet
+      template: 
+        src: supernet_create.j2
+        dest: ./supernet_create.json
+ 
+    - name: Create a sample  network
+      uri:
+        url: "{{ URL }}networks/"
+        method: POST 
+        return_content: yes 
+        HEADER_Content-Type: "application/json"
+        body: "{{ lookup('file','supernet_create.json') }}"
+        status_code: 201
+        body_format: json
+      delegate_to: localhost
+    ###SUPERNET
+
+
+    ###ITERABLES
+    - name: Create the json body to create a vlan and cryptomap counter iterable
+      template: 
+        src: iter_create.j2
+        dest: ./{{item}}_iter_create.json
+      with_items:
+        - vlan
+        - cryptomap
+ 
+      #This is used to identify the values associated with a given playbook run
+    - name : Create the VLAN and cryptomap counters
+      uri:
+        url: "{{ URL }}iterables/"
+        method: POST 
+        return_content: yes 
+        HEADER_Content-Type: "application/json"
+        body: "{{ lookup('file','{{item}}_iter_create.json') }}"
+        status_code: 201
+        body_format: json
+      delegate_to: localhost
+      with_items: 
+        - vlan
+        - cryptomap
+    ###ITERABLES

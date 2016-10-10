@@ -1,0 +1,8 @@
+{
+    "cidr": "{{ encr_snet }}",
+    "network_address": "{{ encr_snet | ipaddr('host') }}",
+    "prefix_length": "{{ encr_snet | ipaddr('prefix') }}",
+    "attributes": {},
+    "state": "allocated",
+    "site_id": "{{ site['json']['id'] }}"
+}
