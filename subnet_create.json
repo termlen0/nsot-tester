@@ -1,8 +1,8 @@
 {
-    "cidr": "10.119.0.32/28",
-    "network_address":  "10.119.0.32",
+    "cidr": "10.119.0.0/28",
+    "network_address":  "10.119.0.0",
     "prefix_length": 28,
-    "attributes": {'service_key': '5985f80b-e7c8-5cd2-a6fa-a87d951f6f8f'},
+    "attributes": {'service_key': '796588d6-ddbe-5b85-bbb3-b228a4036c48'},
     "state": "allocated",
-    "site_id": 1
+    "site_id": 2
 }

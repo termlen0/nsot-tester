@@ -4,7 +4,7 @@
   gather_facts: false
   connection: local
   vars:
-    URL: "http://localhost:8991/api/" 
+    URL: "http://localhost:8991/api/"
     encr_snet: "10.119.0.0/24"
     encr_prefix: "/28"
   tasks:
@@ -19,7 +19,7 @@
     ############
 
     - name: Collect the next available cryptomap number and vlan number
-      action: uri url={{ URL }}iterables/{{ item }}/next_value 
+      action: uri url={{ URL }}iterables/{{ item }}/next_value
       register: next_val
       with_items:
         - vlan_counter
@@ -40,14 +40,14 @@
 
     - name:  Create a dictionary of iterable pk and their values
       set_fact: pk_dict="{{ pk_dict | default({}) | combine({item['json']['name']:item['json']['id']}) }}"
-      with_items: pk.results
+      with_items: "{{ pk.results }}"
       tags:
         - play
 
 
     - name: Create a dictionary of iterables and their values
       set_fact: iter_vals="{{ iter_vals | default({}) | combine({item['item']:item['json'][0]|int }) }}"
-      with_items: next_val.results
+      with_items: "{{ next_val.results }}"
       tags:
         - play
 
@@ -59,18 +59,18 @@
         - local_cleanup
 
     - name: Create the json body to allocate the itervalue
-      template: 
+      template:
         src: itervalue.j2
         dest: ./{{item.key}}_create.json
-      with_dict: iter_vals
+      with_dict: "{{ iter_vals }}"
       tags:
         - play
 
     - name: Allocate the next available cryptomap number and vlan number
       uri:
         url: "{{URL}}itervalues/"
-        method: POST 
-        return_content: yes 
+        method: POST
+        return_content: yes
         HEADER_Content-Type: "application/json"
         body: "{{ lookup('file','{{item}}_counter_create.json') }}"
         status_code: 201
@@ -80,18 +80,18 @@
         - cryptomap
       tags:
         - play
-      
+
     ##########
     # PREFIX #
     ##########
     - name: Collect the next available encryption domainc
       action: uri url={{ URL }}networks/{{ encr_snet }}/next_network/?prefix_length=28
       register: encry_domain
-      tags: 
+      tags:
         - play
-      
+
     - name: Create the json body to allocate the itervalue
-      template: 
+      template:
         src: subnet_create.j2
         dest: ./subnet_create.json
       tags: play
@@ -100,14 +100,14 @@
     - name: Allocate the next available encryption domain
       uri:
         url: "{{URL}}networks/"
-        method: POST 
-        return_content: yes 
+        method: POST
+        return_content: yes
         HEADER_Content-Type: "application/json"
         body: "{{ lookup('file','subnet_create.json') }}"
         status_code: 201
         body_format: json
       tags: play
- 
+
 
     ###########
     # CLEANUP #
@@ -127,7 +127,7 @@
         status_code: 200
         body: "{{ lookup('file','value_delete.json') }}"
         body_format: json
-      with_items: nets.json
+      with_items: "{{ nets.json }}"
       delegate_to: localhost
       tags:
         - local_cleanup
@@ -138,11 +138,11 @@
         method: DELETE
         HEADER_Content-Type: "application/json"
         status_code: 204
-      with_items: nets.json
+      with_items: "{{ nets.json }}"
       delegate_to: localhost
       tags:
         - local_cleanup
- 
+
     - name: Collect the itervalues whose values need to be deleted
       action: uri url={{ URL }}itervalues?attributes=service_key={{skey}}
       register: itrval
@@ -157,7 +157,7 @@
         status_code: 200
         body: "{{ lookup('file','value_delete.json') }}"
         body_format: json
-      with_items: itrval.json
+      with_items: "{{ itrval.json }}"
       delegate_to: localhost
       tags:
         - local_cleanup
@@ -166,6 +166,3 @@
       include: cleanup.yaml
       tags:
         - cleanup
-
-
-
